@@ -24,7 +24,7 @@ from models_speaker import ETDNN, FTDNN, XTDNN
 from test_model_speaker import test, test_nosil
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from utils import (SpeakerRecognitionMetrics, aggregate_probs, drop_adapt, drop_adapt_combine, drop_adapt_random,
+from utils import (SpeakerRecognitionMetrics, aggregate_probs, drop_adapt, drop_adapt_combine, drop_adapt_random, drop_adapt_onlydata,
                    drop_classes, drop_per_batch, schedule_lr)
 
 
@@ -90,6 +90,7 @@ def parse_config(args):
     args.dropadapt_combine = config['Dropclass'].getboolean('dropadapt_combine', fallback=True)
     args.dropadapt_uniform_agg = config['Dropclass'].getboolean('dropadapt_uniform_agg', fallback=False)
     args.dropadapt_random = config['Dropclass'].getboolean('dropadapt_random', fallback=False)
+    args.dropadapt_onlydata = config['Dropclass'].getboolean('dropadapt_onlydata', fallback=False)
     return args
 
 
@@ -138,7 +139,7 @@ def train(ds_train):
         for model, modelstr in [(generator, 'g'), (classifier, 'c')]:
             model.load_state_dict(torch.load(model_str.format(modelstr, args.resume_checkpoint)))
 
-    if args.use_dropadapt:
+    if args.use_dropadapt and args.use_dropclass:
         model_str = os.path.join(args.model_dir, '{}_adapt_start.pt')
         for model, modelstr in [(generator, 'g'), (classifier, 'c')]:
             model_path = model_str.format(modelstr)
@@ -229,7 +230,10 @@ def train(ds_train):
                             print('------ Combining least probable classes into one...')
                             ds_train, classifier = drop_adapt_combine(full_probs, classifier, ds_train, num_drop=args.num_drop)
                         else:
-                            ds_train, classifier = drop_adapt(full_probs, classifier, ds_train, num_drop=args.num_drop)
+                            if args.dropadapt_onlydata:
+                                ds_train = drop_adapt_onlydata(full_probs, ds_train, num_drop=args.num_drop)
+                            else:
+                                ds_train, classifier = drop_adapt(full_probs, classifier, ds_train, num_drop=args.num_drop)
                         print('------ [{}/{}] classes remaining'.format(len(classifier.rem_classes), classifier.n_classes))
                         np.save(os.path.join(args.model_dir, 'remclasses_{}.npy'.format(iterations)), classifier.rem_classes)
                         del full_probs
@@ -349,6 +353,7 @@ if __name__ == "__main__":
     if args.test_data_sitw:
         ds_test_sitw = SpeakerTestDataset(args.test_data_sitw)
     if args.use_dropadapt:
+        assert args.use_dropclass
         if args.ds_adapt == 'vc':
             ds_adapt = ds_test_vc1
         if args.ds_adapt == 'sitw':

@@ -213,6 +213,7 @@ class SpeakerTestDataset(Dataset):
         self.init_uniform()
 
     def init_uniform(self):
+        # current undersampling, TODO: oversample option instead.
         self.enrol_uspkrs = [self.utt2spk_dict[i] for i in self.enrol_utts]
         self.utts_per_espk = Counter(self.enrol_uspkrs)
         self.min_utts_spk = self.utts_per_espk[min(self.utts_per_espk, key=self.utts_per_espk.get)]
