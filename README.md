@@ -1,4 +1,4 @@
-# DropClass and DropAdapt: Dropping Training Classes for Deep Speaker Representation Learning
+# DropClass and DropAdapt: Dropping classes for deep speaker representation learning
 
 This repository presents the code for the paper submitted to Speaker Odyssey 2020:  
 
