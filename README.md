@@ -30,9 +30,10 @@ This method is for adapting a trained model to a set of enrolment speakers in an
 
 1. Fully train a model
 2. Calculate average class probabilities for the enrollment utterances.
-3. Rank these probabilities, drop classes with lob probability from the training data, and the final affine matrix.
-4. Train for a number of iterations on the reduced classification problem.
-5. Go back to step 2 and repeat.
+3. Rank these probabilities.
+4. Permanently drop classes with low probability from the training data, and the final affine matrix.
+5. Train for a number of iterations on the reduced classification problem.
+6. Go back to step 2 and repeat.
 
 **Motivation:** Class distribution from train to test is mismatched (See Figure 2 in the paper). This suggests the model is trained on a distribution of speakers which is not seen at test time. Solution: fine tune a model by correctively oversampling the apparently underrepresented classes. The alternative interpretation is that the low probability predicted classes are not important to distinguish between for a chosen test set - thus fine tune on a classification problem which you hypothesize is more important in the test set.
 
