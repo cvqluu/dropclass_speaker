@@ -1,6 +1,8 @@
 # DropClass and DropAdapt: Dropping Training Classes for Deep Speaker Representation Learning
 
-This repository presents the code for the paper submitted to Speaker Odyssey 2020. DropClass and DropAdapt.
+This repository presents the code for the paper submitted to Speaker Odyssey 2020:  
+
+**"DropClass and DropAdapt: Dropping classes for deep speaker representation learning"**
 
 These methods around the concept of 'dropping' classes periodically throughout training. 
 
@@ -14,15 +16,17 @@ The overall DropClass method is described as follows:
 4. Train for a number of iterations on this subset classification task
 5. Go back to step 1. and choose a new set of classes to drop and repeat periodically until training is finished.
 
-Other than these steps, training can be performed as standard. This technique can be seen somewhat as dropout on the final affine layer.
+Other than these steps, training can be performed as standard. This technique can be seen somewhat as dropout on the final affine layer. This method is also shown in the diagram below:
 
-One motivation behind doing so is to diversify the learning objective that the network receives during training. Classification of a set number of classes is a static condition, whereas representation learning requires generalization to any number of unseen classes (ideally learning the complete manifold of faces/speakers for example). By varying the set of classes during training, the idea is to encourage discrimination between subsets, and encourage the network to be agnostic about any single classification objective.
+![model_fig](figures/dc_diag.png?raw=true "dc_diag")
 
-Ideally, the resulting network should have some of the benefits shown from multi-task training techniques.
+**Motivation:** Diversify the learning objective that the network receives during training. Classification of a set number of classes is a static condition, whereas representation learning requires generalization to any number of unseen classes (ideally learning the complete manifold of faces/speakers for example). By varying the set of classes during training, the idea is to encourage discrimination between subsets, and encourage the network to be agnostic about any single classification objective.
+
+Ideally, the resulting network should have some of the benefits shown from multi-task training techniques - also inspired by meta learning approaches.
 
 ## DropAdapt
 
-This method is described like so:
+This method is for adapting a trained model to a set of enrolment speakers in an unsupervised manner. Can be described like so:
 
 1. Fully train a model
 2. Calculate average class probabilities for the enrollment utterances.
@@ -30,7 +34,7 @@ This method is described like so:
 4. Train for a number of iterations on the reduced classification problem.
 5. Go back to step 2 and repeat.
 
-This method can be interpreted as a kind of corrective oversampling of the classes which the model believes are more likely to be present in the test set.
+**Motivation:** Class distribution from train to test is mismatched (See Figure 2 in the paper). This suggests the model is trained on a distribution of speakers which is not seen at test time. Solution: fine tune a model by correctively oversampling the apparently underrepresented classes. The alternative interpretation is that the low probability predicted classes are not important to distinguish between for a chosen test set - thus fine tune on a classification problem which you hypothesize is more important in the test set.
 
 ## Requirements
 
@@ -39,7 +43,7 @@ For all: torch, uvloop, scikit-learn
 Kaldi, kaldi_io, kaldiio
 
 
-# Data Preparation (Speaker)
+# Data Preparation
 
 The primary speaker datasets used here are VoxCeleb (1+2) and SITW. The only portion used for training is VoxCeleb 2 (train portion), to ensure no overlap with SITW, in addition to allowing evaluation on the extended and hard VoxCeleb verification lists (VoxCeleb-E, VoxCeleb-H) which are drawn from VoxCeleb 1.
 
@@ -197,7 +201,6 @@ Most of these configurable hyper-parameters are fairly self-explanatory.
 ```ini
 [Outputs]
 model_dir = exp/example_exp_speaker # place where models are stored
-log_file = exp/example_exp_speaker/train.log
 checkpoint_interval = 500 # Interval to save models and also evaluate
 ```
 
@@ -210,14 +213,19 @@ use_dropclass = False # enables DropClass
 its_per_drop = 500 # Iterations to run before randomly selecting new classes to drop
 num_drop = 2000 # Number of classes to drop per iteration
 drop_per_batch = False # Drops all classes that aren't in the batch (overwrites above 2)
+use_dropadapt = # enables DropAdapt
+ds_adapt = vc #choose which out of [sitw, vc] you want to calculate $p_{average}$ on
+dropadapt_combine = False # Combine all dropped classes into one or not
+dropadapt_uniform_agg = False # Calculate p_avg using a uniform dist of speakers
+dropadapt_random = False # Drop random classes for dropadapt
+dropadapt_onlydata = False # Drop only the low prob classes, leave them in the output layer
 ```
 
 Here, the options for the central idea of these experiments is configured.
 
-
 # Results
 
-See paper
+See paper (to be put on arXiv soon...)
 
 # Issues and TODOs
 
