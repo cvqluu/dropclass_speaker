@@ -17,7 +17,13 @@ from data_io_speaker import SpeakerTestDataset
 from kaldiio import ReadHelper
 from models_speaker import ETDNN, FTDNN, XTDNN
 from utils import SpeakerRecognitionMetrics
+from sklearn.metrics.pairwise import cosine_similarity
 
+def mtd(stuff, device):
+    if isinstance(stuff, torch.Tensor):
+        return stuff.to(device)
+    else:
+        return [mtd(s, device) for s in stuff]
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Test SV Model')
@@ -123,6 +129,57 @@ def test_nosil(generator, ds_test, device, mindcf=False):
         return eer, mindcf1, mindcf2
     else:
         return eer
+
+def evaluate_deepmine(generator, ds_eval, device, outfile_path='./exp'):
+    generator.eval()
+
+    answer_col0 = []
+    answer_col1 = []
+    answer_col2 = []
+
+    with torch.no_grad():
+        for i in tqdm(range(len(ds_eval))):
+            model, enrol_utts, enrol_feats, eval_utts, eval_feats = ds_eval.__getitem__(i)
+            answer_col0.append([model for _ in range(len(eval_utts))])
+            answer_col1.append(eval_utts)
+
+            enrol_feats = mtd(enrol_feats, device)
+            model_embed = torch.cat([generator(x.unsqueeze(0)) for x in enrol_feats]).cpu().numpy()
+            model_embed = np.mean(normalize(model_embed, axis=1), axis=0).reshape(1, -1)
+            
+            del enrol_feats
+            eval_utts = mtd(eval_utts, device)
+            eval_embeds = torch.cat([generator(x.unsqueeze(0)) for x in eval_feats]).cpu().numpy()
+            eval_embeds = normalize(eval_embeds, axis=1)
+
+            scores = cosine_similarity(model_embed, eval_embeds).squeeze(0)
+            assert len(scores) == len(eval_utts)
+            answer_col2.append(scores)
+            del eval_feats
+    
+    answer_col0 = np.concatenate(answer_col0)
+    answer_col1 = np.concatenate(answer_col1)
+    answer_col2 = np.concatenate(answer_col2)
+
+    with open(os.path.join(outfile_path, 'answer_full.txt'), 'w+') as fp:
+        for m, ev, s in zip(answer_col0, answer_col1, answer_col2):
+            line = '{} {} {}\n'.format(m, ev, s)
+            fp.write(line)
+
+    with open(os.path.join(outfile_path, 'answer.txt'), 'w+') as fp:
+        for s in answer_col2:
+            line = '{}\n'.format(s)
+            fp.write(line)
+
+    if (answer_col0 == np.array(ds_eval.models_eval)).all():
+        print('model ordering matched')
+    else:
+        print('model ordering was not correct, need to fix before submission')
+
+    if (answer_col1 == np.array(ds_eval.eval_utts)).all():
+        print('eval utt ordering matched')
+    else:
+        print('eval utt ordering was not correct, need to fix before submission')
 
 
 def round_sig(x, sig=2):

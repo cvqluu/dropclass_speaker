@@ -262,7 +262,7 @@ class SpeakerTestDataset(Dataset):
 
 class SpeakerEvalDataset(Dataset):
     
-    def __init__(self, data_base_path, asynchr=True):
+    def __init__(self, data_base_path):
         self.data_base_path = data_base_path
         feats_scp_path = os.path.join(data_base_path, 'feats.scp')
         model_enrollment_path = os.path.join(data_base_path, 'model_enrollment.txt')
@@ -309,4 +309,4 @@ class SpeakerEvalDataset(Dataset):
         enrol_feats = async_map(get_item_test, enrol_utts)
         eval_feats = async_map(get_item_test, eval_utts)
 
-        return enrol_utts, enrol_feats, eval_utts, eval_feats
+        return model, enrol_utts, enrol_feats, eval_utts, eval_feats
