@@ -1,6 +1,7 @@
 import os
 import random
 import asyncio
+import itertools
 from joblib import Parallel, delayed
 from multiprocessing import Pool
 from collections import OrderedDict, Counter
@@ -258,3 +259,54 @@ class SpeakerTestDataset(Dataset):
             batch_fpaths = [self.utt_fpath_dict[utt] for utt in batch_utts]
             batch_feats = async_map(get_item_train, zip(batch_fpaths, lens))
             yield torch.stack(batch_feats)
+
+class SpeakerEvalDataset(Dataset):
+    
+    def __init__(self, data_base_path, asynchr=True):
+        self.data_base_path = data_base_path
+        feats_scp_path = os.path.join(data_base_path, 'feats.scp')
+        model_enrollment_path = os.path.join(data_base_path, 'model_enrollment.txt')
+        eval_veri_pairs_path = os.path.join(data_base_path, 'trials.txt')
+
+        if os.path.isfile(feats_scp_path):
+            self.utt_fpath_dict = odict_from_2_col(feats_scp_path)
+
+        self.models, self.enr_utts = load_one_tomany(model_enrollment_path)
+        if self.models[0] == 'model-id':
+            self.models, self.enr_utts = self.models[1:], self.enr_utts[1:]
+        assert len(self.models) == len(set(self.models))
+        self.model_enr_utt_dict = OrderedDict({k:v for k,v in zip(self.models, self.enr_utts)})
+
+        self.all_enrol_utts = list(itertools.chain.from_iterable(self.enr_utts))
+
+        self.models_eval, self.eval_utts = load_n_col(eval_veri_pairs_path)
+        if self.models_eval[0] == 'model-id':
+            self.models_eval, self.eval_utts = self.models_eval[1:], self.eval_utts[1:]
+        
+        assert set(self.models_eval) == set(self.models)
+
+        self.model_eval_utt_dict = OrderedDict({})
+        for m, ev_utt in zip(self.models_eval, self.eval_utts):
+            if m not in self.model_eval_utt_dict:
+                self.model_eval_utt_dict[m] = []
+            self.model_eval_utt_dict[m].append(ev_utt)
+        
+        self.models = list(self.model_eval_utt_dict.keys())
+        
+        
+    def __len__(self):
+        return len(self.models)
+
+
+    def __getitem__(self, idx):
+        '''
+        Returns enrolment utterances and eval utterances for a specific model
+        '''
+        model = self.models[idx]
+        enrol_utts = self.model_enr_utt_dict[model]
+        eval_utts = self.model_eval_utt_dict[model]
+
+        enrol_feats = async_map(get_item_test, enrol_utts)
+        eval_feats = async_map(get_item_test, eval_utts)
+
+        return enrol_utts, enrol_feats, eval_utts, eval_feats
