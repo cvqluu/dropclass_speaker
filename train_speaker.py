@@ -94,7 +94,7 @@ def parse_config(args):
     return args
 
 
-def train(ds_train):
+def train(ds_train, ds_adapt, args):
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     print('='*30)
     print('USE_CUDA SET TO: {}'.format(use_cuda))
@@ -360,4 +360,4 @@ if __name__ == "__main__":
             ds_adapt = ds_test_sitw
     if args.use_dropclass:
         assert not (args.use_dropadapt and args.drop_per_batch)
-    train(ds_train)
+    train(ds_train, ds_adapt, args)
